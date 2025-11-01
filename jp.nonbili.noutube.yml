@@ -1,0 +1,82 @@
+app-id: jp.nonbili.noutube
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+base: org.electronjs.Electron2.BaseApp
+base-version: '25.08'
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.node22
+command: run.sh
+separate-locales: false
+finish-args:
+  - --device=dri
+  - --share=ipc
+  - --socket=x11
+  - --socket=pulseaudio
+  - --share=network
+  - --own-name=org.mpris.MediaPlayer2.chromium.*
+  - --talk-name=org.freedesktop.PowerManagement
+  - --talk-name=org.freedesktop.ScreenSaver
+  - --talk-name=org.gnome.SessionManager
+  - --talk-name=org.gnome.SettingsDaemon
+modules:
+  - name: noutube
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/node22/bin
+    build-commands:
+      - pwd
+      - ls
+      - export PATH="$PWD/bun-build:$PATH"
+      - bun-build/bun bundle
+      # - bun-build/bun link
+
+      # - bun-build/bun install
+      - |
+        cd desktop
+        ../bun-build/bun electron-vite build
+        ../bun-build/bun electron-builder --publish never --config.electronDist=../node_modules/electron/dist2
+      # - ls
+      # - bun-build/bun run build:linux --cwd desktop
+
+      # - bun-build/bun --cwd desktop electron-vite build
+      # - bun-build/bun --cwd desktop electron-builder --publish never --dir --linux dir --config.electronDist=node_modules/electron/dist2
+
+      - cp -a desktop/dist/linux-unpacked /app/main
+      - install -Dm755 -t /app/bin/ ./run.sh
+
+      # - install -Dm644 linux-unpacked/flatpak/jp.nonbili.noutube.metainfo.xml -t /app/share/metainfo/
+      # - install -Dm644 linux-unpacked/flatpak/jp.nonbili.noutube.desktop -t /app/share/applications/
+      # - install -Dm644 linux-unpacked/resources/app.asar.unpacked/resources/icon.png -T /app/share/icons/hicolor/512x512/apps/jp.nonbili.noutube.png
+    sources:
+      - type: archive
+        url: https://github.com/nonbili/NouTube/archive/d08dde6f745cb01d4371fa792183443183a22395.zip
+        sha256: bdd201e54532b3a6159b8e57e27b42650e426523e06f18fdf8a9075cbc8ab9b1
+        only-arches: [x86_64]
+      - type: dir
+        path: ./node_modules
+        dest: node_modules
+      - type: archive
+        url: https://github.com/oven-sh/bun/releases/download/bun-v1.3.1/bun-linux-x64.zip
+        sha512: 1fd367254ccff89163b32ee8bf76b7f013855043bf828d36300aaeef95b72139ed6afdab4446e11e85b56b4a57cfd45a2c4d02460a5f1172e35493ad603fc010
+        dest: bun-build
+        only-arches: [x86_64]
+        x-checker-data:
+            type: json
+            url: https://api.github.com/repos/oven-sh/bun/releases/latest
+            version-query: .tag_name | sub("bun-v"; "")
+            url-query: .assets[] | select(.name == "bun-linux-x64.zip") | .browser_download_url
+
+      - type: archive
+        url: https://github.com/electron/electron/releases/download/v37.2.5/electron-v37.2.5-linux-x64.zip
+        # sha512: b20ed3f62b408b69b0d64413b13efd3da3cffa7f16d7c5d658ada05f7975961c9127711cf2dab2023a2de6d9c5085dd83b35f6de3e1c602e283b9703642ea3d7
+        sha256: 8fbb9e05130bde60db97a05c07969039a83e7adb9885251f90727ad1e0684be7
+        # dest: node_modules/electron/dist
+        dest: node_modules/electron/dist2
+        only-arches: [x86_64]
+
+      # - generated-sources.json
+      - type: script
+        dest-filename: run.sh
+        commands:
+          - zypak-wrapper.sh /app/main/noutube-desktop "$@"
