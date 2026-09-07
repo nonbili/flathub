@@ -1,0 +1,57 @@
+app-id: jp.nonbili.tmiix
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.golang
+  - org.freedesktop.Sdk.Extension.node24
+command: tmiix
+finish-args:
+  - --device=dri
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --share=network
+  - --filesystem=host
+  - --talk-name=org.freedesktop.Flatpak
+
+modules:
+  - name: tmiix
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/golang/bin:/usr/lib/sdk/node24/bin:/run/build/tmiix/bin
+      env:
+        GOPATH: /run/build/tmiix/go
+        GOFLAGS: -mod=vendor
+    build-commands:
+      - HOME=$PWD yarn config --offline set yarn-offline-mirror $FLATPAK_BUILDER_BUILDDIR/flatpak-node/yarn-mirror
+      - cd frontend && yarn install --offline --frozen-lockfile --ignore-scripts
+      - cd frontend && bun run build
+      - go build -mod=vendor -tags "production webkit2_41" -o /app/bin/tmiix .
+      - install -Dm644 metadata/flatpak/jp.nonbili.tmiix.metainfo.xml /app/share/metainfo/jp.nonbili.tmiix.metainfo.xml
+      - install -Dm644 metadata/flatpak/jp.nonbili.tmiix.desktop /app/share/applications/jp.nonbili.tmiix.desktop
+      - install -Dm644 metadata/flatpak/jp.nonbili.tmiix.png /app/share/icons/hicolor/512x512/apps/jp.nonbili.tmiix.png
+    sources:
+      - type: archive
+        url: https://github.com/nonbili/tmiix/archive/refs/tags/v0.1.4.tar.gz
+        sha256: 5656a8273336cbb4d924662e0ed462d8794af87b49933cccfd61ad2801390efa
+
+      - type: archive
+        url: https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-x64.zip
+        sha256: 36368faef7527875d5ffa52e53cd48021741f2a83eb6208a8dd64068d422a913
+        dest: bin
+        only-arches: [x86_64]
+
+      - type: archive
+        url: https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-aarch64.zip
+        sha256: 54328bbc2d9c8e0c9f892c544d66c57a83b84139e34909e5ee81758f1ac8fda7
+        dest: bin
+        only-arches: [aarch64]
+
+      - type: file
+        path: yarn.lock
+        dest: frontend
+
+      - go-sources.yml
+      - yarn-sources.json
